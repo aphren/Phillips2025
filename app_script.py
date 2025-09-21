@@ -43,19 +43,11 @@ gene_input_dropdown = st.sidebar.selectbox(
     placeholder="Choose a gene...",
 )
 
-# If a dropdown choice is made, use it to populate the text input
-if gene_input_dropdown:
-    default_text = gene_input_dropdown
-else:
-    default_text = ""
+
+# chrom_pos_end =
 
 
-# Text input with dropdown as default value
-gene_input_manual = st.sidebar.text_input(
-    "Or enter gene name manually:", value=default_text, key="gene_user_input"
-)
-
-if not gene_input_manual:
+if not gene_input_dropdown:
     st.markdown(
         """
             ### This tool allows you to:
@@ -65,7 +57,8 @@ if not gene_input_manual:
             ### Getting started:
             - Select a gene from the sidebar dropdown menu, or manually enter a gene name in the text box
             - View all guides targeting said gene and view corresponding data below
-    
+            ### Tip:
+            - For faster chart loading, clear your previous gene selection with the x in the dropdown prior to selecting a new one.
             """
     )
 
@@ -75,10 +68,13 @@ if not gene_input_manual:
 ## graph all genes in that area
 ## expand view button? for easy expansion?
 
+if gene_input_dropdown:
+    gene_input = gene_input_dropdown.lower()
+else:
+    gene_input = None
 
-gene_input = gene_input_manual.lower()
+
 if gene_input and gene_input in gene_data["gene_name_lower"].to_list():
-
     gene_start = (
         gene_data[gene_data["gene_name_lower"] == gene_input]["start"]
         .values[0]
@@ -90,78 +86,110 @@ if gene_input and gene_input in gene_data["gene_name_lower"].to_list():
         .astype(int)
     )
 
+    chrom_pos_start = st.sidebar.text_input(
+        "Starting chromosomal position:",
+        value=gene_start - 20,
+        key="chrom_start",
+    )
+
+    chrom_pos_end = st.sidebar.text_input(
+        "Ending chromosomal position:", value=gene_end - 20, key="chrom_end"
+    )
+
+    chart_start = int(chrom_pos_start) - 20
+    chart_end = int(chrom_pos_end) + 20
+
     relevant_guides = fold_data[
-        (fold_data["start"] >= gene_start) & (fold_data["end"] <= gene_end)
+        (fold_data["start"] >= chart_start) & (fold_data["end"] <= chart_end)
     ]
 
-    strand = gene_data[gene_data["gene_name_lower"] == gene_input]["strand"].values[0]
+    if not relevant_guides.empty:
+        strand = gene_data[gene_data["gene_name_lower"] == gene_input]["strand"].values[
+            0
+        ]
 
-    # Define shared x-scale with domain from gene_start to gene_end
-    x_scale = alt.Scale(domain=[gene_start - 20, gene_end + 20])
+        # Define shared x-scale with domain from gene_start to gene_end
+        x_scale = alt.Scale(domain=[chart_start, chart_end])
 
-    # Chart for relevant guides (floating horizontal bars)
-    chart2 = (
-        alt.Chart(relevant_guides)
-        .mark_bar(size=10)
-        .encode(
-            x=alt.X("start:Q", scale=x_scale, title=["Chromosomal Position"]),
-            x2="end:Q",
-            y=alt.Y("A-score:Q", title=["A-score"]),
-            color=alt.Color(
-                "A-score:Q",
-                scale=alt.Scale(scheme="blues"),
-                legend=alt.Legend(title="A-score"),
-            ),
-            tooltip=["design", "A-score", "start"],
+        # Chart for relevant guides (floating horizontal bars)
+        chart2 = (
+            alt.Chart(relevant_guides)
+            .mark_bar(size=10)
+            .encode(
+                x=alt.X("start:Q", scale=x_scale, title=["Chromosomal Position"]),
+                x2="end:Q",
+                y=alt.Y("A-score:Q", title=["A-score"]),
+                color=alt.Color(
+                    "A-score:Q",
+                    scale=alt.Scale(scheme="blues"),
+                    legend=alt.Legend(title="A-score"),
+                ),
+                tooltip=["design", "A-score", "start"],
+            )
         )
-    )
 
-    # Data/chart for gene bars:
-    gene_bar = pd.DataFrame(
-        {
-            "start": [gene_start],
-            "end": [gene_end],
-            "y": [min(relevant_guides["A-score"]) - 1],  # place below guide bars
-            "direction": ["forward" if strand == "+" else "reverse"],
-            "gene": [gene_input_manual],
-        }
-    )
-    gene_chart = (
-        alt.Chart(gene_bar)
-        .mark_bar(size=10, color="green", opacity=0.5)
-        .encode(
-            x="start:Q",
-            x2="end:Q",
-            y=alt.Y("y:Q"),  # fixed Y
-            tooltip=["gene", "direction"],
+        # Data/chart for gene bars:
+        gene_bar = pd.DataFrame(
+            {
+                "start": [gene_start],
+                "end": [gene_end],
+                "y": [min(relevant_guides["A-score"]) - 1],  # place below guide bars
+                "direction": ["forward" if strand == "+" else "reverse"],
+                "gene": [gene_input_dropdown],
+                "midpoint": [(gene_start + gene_end) / 2],
+            }
         )
-    )
-
-    # Show gene direction
-    x_field = "end:Q" if strand == "+" else "start:Q"
-    rotation = -30 if gene_end > gene_start else 30
-
-    arrow_chart = (
-        alt.Chart(gene_bar)
-        .mark_point(shape="triangle", size=100, color="green", filled=True)
-        .encode(
-            x=alt.X(
-                x_field,
-                type="quantitative",
-            ),
-            y=alt.Y("y:Q"),
-            angle=alt.value(-30 if gene_bar["direction"][0] == "forward" else 30),
+        gene_chart = (
+            alt.Chart(gene_bar)
+            .mark_bar(size=10, color="green", opacity=1.0)
+            .encode(
+                x=alt.X("start:Q", scale=x_scale),
+                x2="end:Q",
+                y=alt.Y("y:Q"),  # fixed Y
+                tooltip=["gene", "direction"],
+            )
         )
-    )
 
-    combined_chart = (
-        alt.layer(chart2, gene_chart, arrow_chart)  # your guide bars  # gene indicator
-        .properties(title=f"gRNAs targeting {gene_input_manual}")
-        .configure_title(anchor="middle", fontSize=16)
-    )
+        # Show gene direction
+        x_field = "end:Q" if strand == "+" else "start:Q"
+        rotation = -30 if gene_end > gene_start else 30
 
-    st.altair_chart(combined_chart, use_container_width=True)
-    st.write(relevant_guides)
-    st.write(gene_data)
+        arrow_chart = (
+            alt.Chart(gene_bar)
+            .mark_point(
+                shape="triangle", size=450, color="green", filled=True, opacity=1.0
+            )
+            .encode(
+                x=alt.X(x_field, type="quantitative", scale=x_scale),
+                y=alt.Y("y:Q"),
+                angle=alt.value(-30 if gene_bar["direction"][0] == "forward" else 30),
+            )
+        )
+        # Text on the gene bar
+
+        text_chart = gene_chart.mark_text(
+            # align="center",
+            # baseline="middle",
+            color="white",
+            fontWeight="bold",
+            fontSize=15,
+            align="right",
+            baseline="middle",
+            dy=-1.5,
+        ).encode(text="gene", x=alt.X("midpoint:Q", scale=x_scale))
+
+        combined_chart = (
+            alt.layer(chart2, gene_chart, arrow_chart, text_chart)
+            .properties(title=f"gRNAs targeting {gene_input_dropdown}")
+            .configure_title(anchor="middle", fontSize=16)
+        )
+        with st.spinner("Rendering in your browser..."):
+            st.altair_chart(combined_chart, use_container_width=True)
+            st.write("gRNA data:", relevant_guides)
+
+        # st.write(gene_data)
+    if relevant_guides.empty:
+        st.write("No guides targeting this gene")
+
 elif gene_input and gene_input not in gene_data["gene_name_lower"].to_list():
     st.write("Error: Invalid gene name")
