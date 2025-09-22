@@ -186,7 +186,7 @@ if chrom_pos_start and chrom_pos_end and st.sidebar.button("Load Chart"):
                 color="white",
                 fontWeight="bold",
                 fontSize=15,
-                align="right",
+                align="center",
                 baseline="middle",
                 dy=-1.5,
             )
