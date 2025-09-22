@@ -28,6 +28,9 @@ gene_data_url = "https://raw.githubusercontent.com/aphren/Phillips2025/refs/head
 gene_data = load_data(gene_data_url)
 gene_data["gene_name_lower"] = gene_data["gene_name"].str.lower()
 
+theme = st.get_option("theme.base")
+st.write(theme)
+text_color = "white" if theme == "dark" else "black"
 
 st.sidebar.markdown(
     """<center>
@@ -167,7 +170,7 @@ if chrom_pos_start and chrom_pos_end and st.sidebar.button("Load Chart"):
             alt.Chart(relevant_genes)
             .mark_point(
                 shape="diamond",
-                size=350,
+                size=300,
                 filled=True,
                 opacity=1.0,
             )
@@ -183,7 +186,7 @@ if chrom_pos_start and chrom_pos_end and st.sidebar.button("Load Chart"):
         chart_text = (
             alt.Chart(relevant_genes)
             .mark_text(
-                color="white",
+                color=text_color,
                 fontWeight="bold",
                 fontSize=15,
                 align="center",
