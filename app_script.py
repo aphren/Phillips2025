@@ -29,7 +29,6 @@ gene_data = load_data(gene_data_url)
 gene_data["gene_name_lower"] = gene_data["gene_name"].str.lower()
 
 theme = st.get_option("theme.base")
-st.write(theme)
 text_color = "white" if theme == "dark" else "black"
 
 st.sidebar.markdown(
