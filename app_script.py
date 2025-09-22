@@ -198,8 +198,13 @@ if chrom_pos_start and chrom_pos_end and st.sidebar.button("Load Chart"):
             )
         )
 
+        chart_lines = (
+            alt.Chart(pd.DataFrame({"y": [2]}))
+            .mark_rule(strokeDash=[5, 5], color="red")
+            .encode(y="y:Q")
+        )
         combined_chart = (
-            alt.layer(chart_guides, chart_genes, chart_arrows, chart_text)
+            alt.layer(chart_guides, chart_lines, chart_genes, chart_arrows, chart_text)
             # .properties(title=f"gRNAs targeting {gene_input_dropdown}")
             .configure_title(anchor="middle", fontSize=16)
         )
