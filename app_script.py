@@ -185,7 +185,7 @@ if chrom_pos_start and chrom_pos_end and st.sidebar.button("Load Chart"):
         chart_text = (
             alt.Chart(relevant_genes)
             .mark_text(
-                color="grey",
+                color=text_color,
                 fontWeight="bold",
                 fontSize=15,
                 align="center",
