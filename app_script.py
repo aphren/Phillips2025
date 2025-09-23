@@ -116,7 +116,7 @@ if chrom_pos_start and chrom_pos_end and st.sidebar.button("Load Chart"):
     relevant_genes["chart_end"] = relevant_genes["end"].clip(upper=chart_end)
 
     relevant_genes["arrow_pos"] = relevant_genes.apply(
-        lambda row: row["chart_start"] if row["strand"] == "+" else row["chart_end"],
+        lambda row: row["chart_end"] if row["strand"] == "+" else row["chart_start"],
         axis=1,
     )
 
@@ -185,7 +185,7 @@ if chrom_pos_start and chrom_pos_end and st.sidebar.button("Load Chart"):
         chart_text = (
             alt.Chart(relevant_genes)
             .mark_text(
-                color=text_color,
+                color="grey",
                 fontWeight="bold",
                 fontSize=15,
                 align="center",
