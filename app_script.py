@@ -66,32 +66,43 @@ if not gene_input_dropdown:
     )
     gene_start = None
     gene_end = None
-
+    st.session_state.chrom_start = None
+    st.session_state.chrom_end = None
 
 if gene_input_dropdown:
-    gene_input = gene_input_dropdown.lower()
-    gene_start = (
-        gene_data[gene_data["gene_name_lower"] == gene_input]["start"]
-        .values[0]
-        .astype(int)
-    )
-    gene_end = (
-        gene_data[gene_data["gene_name_lower"] == gene_input]["end"]
-        .values[0]
-        .astype(int)
-    )
+    if (
+        "prev_gene" not in st.session_state
+        or st.session_state.prev_gene != gene_input_dropdown
+    ):
+        match = gene_data[gene_data["gene_name_lower"] == gene_input_dropdown.lower()]
+        if not match.empty:
+            st.session_state.chrom_start = str(int(match["start"].values[0]))
+            st.session_state.chrom_end = str(int(match["end"].values[0]))
+        st.session_state.prev_gene = gene_input_dropdown
+
 
 chrom_pos_start = st.sidebar.text_input(
     "Starting chromosomal position:",
-    value=int(gene_start) if gene_start is not None else "",
     key="chrom_start",
 )
 
 chrom_pos_end = st.sidebar.text_input(
     "Ending chromosomal position:",
-    value=int(gene_end) if gene_end is not None else "",
     key="chrom_end",
 )
+
+if chrom_pos_start and chrom_pos_end:
+    if (int(chrom_pos_end) - int(chrom_pos_start)) < 0:
+        st.markdown(
+            "**Invalid input:** starting position must be less than ending position"
+        )
+        chrom_pos_start = None
+        chrom_pos_end = None
+
+    elif (int(chrom_pos_end) - int(chrom_pos_start)) > 30000:
+        st.markdown("**Invalid input:** maximum viewing size is 30,000 bp")
+        chrom_pos_start = None
+        chrom_pos_end = None
 
 
 ## add checkbox for guides outside of genes
@@ -153,7 +164,7 @@ if chrom_pos_start and chrom_pos_end and st.sidebar.button("Load Chart"):
 
         chart_genes = (
             alt.Chart(relevant_genes)
-            .mark_bar(size=10, color="green", opacity=1.0)
+            .mark_bar(size=12, color="green", opacity=1.0)
             .encode(
                 x=alt.X("chart_start:Q", scale=x_scale),
                 x2="chart_end:Q",
@@ -185,12 +196,12 @@ if chrom_pos_start and chrom_pos_end and st.sidebar.button("Load Chart"):
         chart_text = (
             alt.Chart(relevant_genes)
             .mark_text(
-                color="grey",
+                color=text_color,
                 fontWeight="bold",
                 fontSize=15,
                 align="center",
                 baseline="middle",
-                dy=-1.5,
+                dy=-0.75,
             )
             .encode(
                 text="gene_name",
